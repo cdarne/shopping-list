@@ -383,20 +383,12 @@ isKeyCode expectedKeyCode msg code =
 
 onEnter : Msg -> Html.Attribute Msg
 onEnter msg =
-    let
-        isEnter code =
-            isKeyCode 13 msg code
-    in
-    onKeyDown isEnter
+    onKeyDown (isKeyCode 13 msg)
 
 
 onEscape : Msg -> Html.Attribute Msg
 onEscape msg =
-    let
-        isEscape code =
-            isKeyCode 27 msg code
-    in
-    onKeyDown isEscape
+    onKeyDown (isKeyCode 27 msg)
 
 
 port setStorage : List Entry -> Cmd msg
