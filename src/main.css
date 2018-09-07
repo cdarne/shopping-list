@@ -1,0 +1,26 @@
+.completed {
+  text-decoration: line-through;
+}
+
+.is-flex-1 {
+  -ms-flex: 1 1 0.000000001px;
+  -webkit-flex: 1;
+  flex: 1;
+  -webkit-flex-basis: 0.000000001px;
+  flex-basis: 0.000000001px;
+}
+
+.edit {
+  cursor: pointer;
+}
+
+@media screen and (min-width: 1088px) {
+  .panel-block:hover .edit {
+    display: inline-block !important;
+  }
+}
+
+.panel-icon.is-right {
+  margin-right: 0;
+  margin-left: 0.75em;
+}
