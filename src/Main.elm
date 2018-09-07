@@ -378,7 +378,7 @@ isKeyCode expectedKeyCode msg code =
         Json.succeed msg
 
     else
-        Json.fail "not ENTER"
+        Json.fail ("not " ++ toString expectedKeyCode)
 
 
 onEnter : Msg -> Html.Attribute Msg
