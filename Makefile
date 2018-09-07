@@ -7,7 +7,8 @@ build:
 	elm-app build
 
 deploy: build
-	cd build; now deploy --public --name "shopping-list"
+	cp now.json build/
+	cd build; now deploy --public && now alias
 
 clean:
 	rm -Rf elm-stuff
