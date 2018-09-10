@@ -3,7 +3,7 @@ port module Main exposing (Model, Msg(..), init, main, update, view)
 import Dom
 import Html exposing (Html, a, article, button, div, footer, h1, header, i, img, input, label, main_, nav, p, small, span, text)
 import Html.Attributes exposing (autofocus, checked, class, classList, disabled, href, id, placeholder, src, type_, value)
-import Html.Events exposing (keyCode, on, onCheck, onClick, onInput, onMouseEnter)
+import Html.Events exposing (keyCode, on, onBlur, onCheck, onClick, onInput, onMouseEnter)
 import Json.Decode as Json
 import Task
 
@@ -40,24 +40,23 @@ newEntry id =
 
 type alias Model =
     { uid : Int
+    , field : String
     , entries : List Entry
-    , filter : String
     , edition : Edition
     }
 
 
 type Edition
-    = None
-    | NewEntry Entry
+    = NewEntry
     | ExistingEntry Entry
 
 
 emptyModel : Model
 emptyModel =
     { uid = 1
+    , field = ""
     , entries = []
-    , filter = ""
-    , edition = None
+    , edition = NewEntry
     }
 
 
@@ -86,13 +85,11 @@ init savedEntries =
 
 type Msg
     = NoOp
+    | UpdateField String
     | Checked Int Bool
-    | UpdateFilter String
-    | AddEntry
     | EditEntry Entry
     | RemoveEntry Entry
     | CancelEdition
-    | UpdateDescription String
     | Save
     | RemoveCompleted
 
@@ -119,6 +116,9 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
+        UpdateField field ->
+            ( { model | field = field }, Cmd.none )
+
         Checked id checked ->
             let
                 updateEntry e =
@@ -130,61 +130,45 @@ update msg model =
             in
             ( { model | entries = List.map updateEntry model.entries }, Cmd.none )
 
-        UpdateFilter value ->
-            ( { model | filter = value }, Cmd.none )
-
-        AddEntry ->
-            ( { model | edition = NewEntry (newEntry model.uid) }, focusDescription )
-
         EditEntry entry ->
-            ( { model | edition = ExistingEntry entry }, focusDescription )
+            ( { model | edition = ExistingEntry entry, field = entry.description }, focusDescription )
 
         RemoveEntry entry ->
-            ( { model | entries = List.filter (\e -> e.id /= entry.id) model.entries }, focusDescription )
-
-        UpdateDescription description ->
-            case model.edition of
-                None ->
-                    ( model, Cmd.none )
-
-                NewEntry entry ->
-                    ( { model | edition = NewEntry { entry | description = description } }, Cmd.none )
-
-                ExistingEntry entry ->
-                    ( { model | edition = ExistingEntry { entry | description = description } }, Cmd.none )
+            ( { model | entries = List.filter (\e -> e.id /= entry.id) model.entries }, Cmd.none )
 
         CancelEdition ->
-            ( { model | edition = None }, Cmd.none )
+            ( { model | edition = NewEntry, field = "" }, Cmd.none )
 
         Save ->
             case model.edition of
-                None ->
-                    ( model, Cmd.none )
-
-                NewEntry entry ->
-                    if String.isEmpty entry.description then
+                NewEntry ->
+                    if String.isEmpty model.field then
                         ( model, Cmd.none )
 
                     else
-                        ( { model | uid = model.uid + 1, entries = entry :: model.entries, edition = None }, Cmd.none )
+                        let
+                            entry =
+                                Entry model.uid model.field False
+                        in
+                        ( { model | uid = model.uid + 1, entries = entry :: model.entries, edition = NewEntry, field = "" }, Cmd.none )
 
                 ExistingEntry entry ->
-                    if String.isEmpty entry.description then
+                    if String.isEmpty model.field then
                         ( model, Cmd.none )
 
                     else
                         let
                             replaceEntry e =
                                 if e.id == entry.id then
-                                    entry
+                                    { entry | description = model.field }
 
                                 else
                                     e
                         in
-                        ( { model | entries = List.map replaceEntry model.entries, edition = None }, Cmd.none )
+                        ( { model | entries = List.map replaceEntry model.entries, edition = NewEntry, field = "" }, Cmd.none )
 
         RemoveCompleted ->
-            ( { model | entries = List.filter (\e -> not e.completed) model.entries }, focusDescription )
+            ( { model | entries = List.filter (\e -> not e.completed) model.entries }, Cmd.none )
 
 
 
@@ -193,37 +177,20 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    let
-        filteredEntries =
-            List.filter (\e -> String.contains (String.toLower model.filter) (String.toLower e.description)) model.entries
-    in
     main_ []
-        [ nav [ class "navbar has-shadow" ]
+        [ nav [ class "navbar is-primary is-fixed-top has-shadow" ]
             [ div [ class "navbar-brand" ]
                 [ div [ class "navbar-item" ] [ span [ class "title is-4" ] [ text "Shopping list" ] ]
-                ]
-            , div [ class "navbar-menu" ]
-                [ div [ class "navbar-end" ]
-                    [ div [ class "navbar-item control has-icons-left" ]
-                        [ div [ class "field" ]
-                            [ div [ class "control" ]
-                                [ input [ class "input is-small", placeholder "search", type_ "text", onInput UpdateFilter ] []
-                                , smallIcon "search" "is-left"
-                                ]
-                            ]
-                        ]
-                    ]
                 ]
             ]
         , section
             [ container
                 [ columns
                     [ column "is-12-tablet is-8-desktop is-offset-2-desktop is-6-widescreen is-offset-3-widescreen"
-                        [ shoppingListView filteredEntries ]
+                        [ shoppingListView model.field model.entries ]
                     ]
                 ]
             ]
-        , modal model.edition
         ]
 
 
@@ -279,22 +246,37 @@ icon description additionalClasses attributes =
     span (class classes :: attributes) [ i [ class ("fa fa-" ++ description) ] [] ]
 
 
-shoppingListView : List Entry -> Html Msg
-shoppingListView entries =
+shoppingListView : String -> List Entry -> Html Msg
+shoppingListView field entries =
     let
+        textBox =
+            div [ class "panel-block" ]
+                [ p [ class "control has-icons-left" ]
+                    [ input
+                        [ id "entry-description"
+                        , class "input is-small"
+                        , type_ "text"
+                        , placeholder "What needs to be bought?"
+                        , value field
+                        , onInput UpdateField
+                        , onEnter Save
+                        , onBlur CancelEdition
+                        ]
+                        []
+                    , icon "edit" "is-small is-left" []
+                    ]
+                ]
+
         noCompletedEntries =
             not (List.any .completed entries)
 
-        addButton =
+        removeCompleted =
             div [ class "panel-block" ]
-                [ div [ class "buttons" ]
-                    [ button [ class "button is-link is-outlined", onClick AddEntry ] [ text "Add a new entry" ]
-                    , button [ class "button is-danger is-outlined", onClick RemoveCompleted, disabled noCompletedEntries ] [ text "Remove completed entries" ]
-                    ]
+                [ button [ class "button is-danger is-outlined is-fullwidth", onClick RemoveCompleted, disabled noCompletedEntries ] [ text "Remove completed entries" ]
                 ]
     in
     nav [ class "panel" ]
-        (entriesView entries ++ [ addButton ])
+        (textBox :: entriesView entries ++ [ removeCompleted ])
 
 
 entriesView : List Entry -> List (Html Msg)
@@ -311,62 +293,6 @@ entriesView entries =
                 ]
     in
     List.map entryView entries
-
-
-modal : Edition -> Html Msg
-modal edition =
-    let
-        isActive =
-            case edition of
-                None ->
-                    False
-
-                NewEntry _ ->
-                    True
-
-                ExistingEntry _ ->
-                    True
-
-        entry =
-            case edition of
-                None ->
-                    Nothing
-
-                NewEntry entry ->
-                    Just entry
-
-                ExistingEntry entry ->
-                    Just entry
-    in
-    div [ classList [ ( "modal", True ), ( "is-active", isActive ) ], onEscape CancelEdition ]
-        [ div [ class "modal-background" ]
-            []
-        , div [ class "modal-card" ]
-            [ header [ class "modal-card-head" ]
-                [ p [ class "modal-card-title" ]
-                    [ text "Add an Entry" ]
-                , button [ class "delete close-modal-button", onClick CancelEdition ]
-                    []
-                ]
-            , Html.section [ class "modal-card-body" ]
-                [ input
-                    (case entry of
-                        Nothing ->
-                            [ id "entry-description", class "input", placeholder "Type the new Entry.", onInput UpdateDescription, onEnter Save ]
-
-                        Just entry ->
-                            [ id "entry-description", class "input", placeholder "Type the new Entry.", onInput UpdateDescription, onEnter Save, value entry.description ]
-                    )
-                    []
-                ]
-            , footer [ class "modal-card-foot" ]
-                [ button [ class "button is-success", onClick Save ]
-                    [ text "Save" ]
-                , button [ class "button", onClick CancelEdition ]
-                    [ text "Close" ]
-                ]
-            ]
-        ]
 
 
 onKeyDown keyCodePredicate =
