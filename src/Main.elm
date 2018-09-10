@@ -1,9 +1,10 @@
 port module Main exposing (Model, Msg(..), init, main, update, view)
 
+import Char exposing (isDigit)
 import Dom
-import Html exposing (Html, a, article, button, div, footer, h1, header, i, img, input, label, main_, nav, p, small, span, text)
-import Html.Attributes exposing (autofocus, checked, class, classList, disabled, href, id, placeholder, src, type_, value)
-import Html.Events exposing (keyCode, on, onBlur, onCheck, onClick, onInput, onMouseEnter)
+import Html exposing (Html, a, button, div, i, img, input, label, main_, nav, p, small, span, text)
+import Html.Attributes exposing (checked, class, classList, disabled, href, id, placeholder, src, type_, value)
+import Html.Events exposing (keyCode, on, onCheck, onClick, onInput)
 import Json.Decode as Json
 import Task
 
@@ -249,22 +250,38 @@ icon description additionalClasses attributes =
 shoppingListView : String -> List Entry -> Html Msg
 shoppingListView field entries =
     let
+        isEditing =
+            not (String.isEmpty field)
+
         textBox =
             div [ class "panel-block" ]
-                [ p [ class "control has-icons-left" ]
-                    [ input
-                        [ id "entry-description"
-                        , class "input is-small"
-                        , type_ "text"
-                        , placeholder "What needs to be bought?"
-                        , value field
-                        , onInput UpdateField
-                        , onEnter Save
-                        , onBlur CancelEdition
+                [ div [ class "field has-addons is-flex-1" ]
+                    (p [ class "control has-icons-left is-flex-1" ]
+                        [ input
+                            [ id "entry-description"
+                            , class "input is-small"
+                            , type_ "text"
+                            , placeholder "What needs to be bought?"
+                            , value field
+                            , onInput UpdateField
+                            , onEnter Save
+                            ]
+                            []
+                        , icon "edit" "is-small is-left" []
                         ]
-                        []
-                    , icon "edit" "is-small is-left" []
-                    ]
+                        :: (if isEditing then
+                                [ p [ class "control" ]
+                                    [ button [ class "button is-small is-success", onClick Save ] [ icon "check" "is-small" [] ]
+                                    ]
+                                , p [ class "control" ]
+                                    [ button [ class "button is-small is-danger", onClick CancelEdition ] [ icon "ban" "is-small" [] ]
+                                    ]
+                                ]
+
+                            else
+                                []
+                           )
+                    )
                 ]
 
         noCompletedEntries =
