@@ -5,10 +5,4 @@ import registerServiceWorker from './registerServiceWorker';
 import setupWithAppStorage from './storage';
 
 setupWithAppStorage(Main);
-
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  e.prompt();
-});
-
 registerServiceWorker();
