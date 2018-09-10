@@ -1,4 +1,5 @@
 {
   "name": "shopping-list",
-  "alias": "shopping-list"
+  "alias": "shopping-list",
+  "type": "static"
 }
