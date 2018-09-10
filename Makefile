@@ -6,7 +6,11 @@ start:
 build:
 	elm-app build
 
-deploy: build
+build-github: build
+	sed -i '' 's|/static/|/shopping-list/static/|g' build/index.html
+	sed -i '' 's|/service-worker.js|/shopping-list/service-worker.js|g' build/static/js/main.*.js
+
+deploy: build-github
 	gh-pages -d build
 
 deploy-now: build
@@ -16,4 +20,4 @@ deploy-now: build
 clean:
 	rm -Rf elm-stuff
 
-.PHONY: start build deploy clean
+.PHONY: start build build-github deploy deploy-now clean
